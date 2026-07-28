@@ -81,6 +81,29 @@ Send candidates the printed `https://…` link. Keep `/admin` private (share the
 with recruiters).
 
 ### B) Production hosting (persistent link)
+
+#### Render — free tier (this repo ships a `render.yaml` blueprint)
+
+The repo includes a Render **Blueprint** (`render.yaml`) that provisions a free web
+service (Python runtime, `uvicorn` bound to Render's `$PORT`, a generated `ADMIN_TOKEN`,
+and `OPENAI_API_KEY` as a dashboard-set secret).
+
+1. Push this repo to GitHub (or GitLab/Bitbucket).
+2. In the [Render dashboard](https://dashboard.render.com): **New +** → **Blueprint** →
+   select the repo. Render reads `render.yaml` and creates the service.
+   *(Shortcut: `https://render.com/deploy?repo=<your-public-repo-url>` runs the same flow.)*
+3. Open the service's **Environment** tab and set `OPENAI_API_KEY` to enable live AI
+   role-play (leave it blank to run the built-in DEMO simulator). Grab the generated
+   `ADMIN_TOKEN` from the same tab for the `/admin` console.
+4. Your public URL is `https://<service-name>.onrender.com` (candidate at `/`,
+   recruiter at `/admin`).
+
+> **Free-tier caveats:** the service sleeps after ~15 min idle and cold-starts on the next
+> request (first hit ~30–60s), and the filesystem is **ephemeral** — the SQLite results DB
+> is wiped on restart/redeploy. `ADMIN_TOKEN` is pinned by the blueprint so the recruiter
+> link stays stable. For durable results, add a paid disk or an external database.
+
+#### Any container host (Docker)
 The included **Dockerfile** deploys anywhere that runs containers:
 
 ```bash
@@ -147,7 +170,7 @@ app/
 static/
   index.html / styles.css / app.js   candidate SPA
   admin.html / admin.js               recruiter console
-Dockerfile, requirements.txt, .env.example, run.ps1
+Dockerfile, requirements.txt, .env.example, run.ps1, render.yaml
 ```
 
 ---
