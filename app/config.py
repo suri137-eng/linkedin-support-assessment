@@ -58,6 +58,11 @@ HOST = _get("HOST", "0.0.0.0")
 
 DB_PATH = Path(_get("DB_PATH", str(DATA_DIR / "assessment.db")))
 
+# Durable storage: when set (e.g. on Render), all sessions/messages/scores are
+# stored in this PostgreSQL database instead of the ephemeral local SQLite file,
+# so recruiter results survive restarts, redeploys, and free-tier sleeps.
+DATABASE_URL = _get("DATABASE_URL")
+
 LLM_TIMEOUT = float(_get("LLM_TIMEOUT", "45") or "45")
 LLM_MAX_TOKENS = int(_get("LLM_MAX_TOKENS", "500") or "500")
 

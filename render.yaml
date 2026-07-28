@@ -11,10 +11,19 @@
 # Notes for the free tier:
 #   * The service sleeps after ~15 min of inactivity and cold-starts on the
 #     next request (first hit may take ~30–60s).
-#   * The filesystem is EPHEMERAL — the SQLite results DB is wiped on every
-#     restart/redeploy. ADMIN_TOKEN is pinned below so the recruiter link
-#     stays stable regardless. For durable results, add a paid disk or an
-#     external database.
+#   * The web service filesystem is EPHEMERAL, so results are NOT stored on it.
+#     They are persisted in the managed PostgreSQL database defined below (via the
+#     DATABASE_URL env var), which keeps every conversation durable across
+#     restarts, redeploys, and sleeps. ADMIN_TOKEN is pinned so the recruiter
+#     link stays stable too.
+#   * Render's FREE Postgres is removed ~30 days after creation. For indefinite
+#     durability, upgrade the database plan or point DATABASE_URL at an external
+#     Postgres (e.g. Neon) — no code change needed.
+databases:
+  - name: linkedin-support-db
+    plan: free
+    region: singapore
+
 services:
   - type: web
     name: linkedin-support-assessment
@@ -28,6 +37,12 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.9"
+      # Durable storage: conversations/scores are saved here, not on the
+      # ephemeral web-service disk, so /admin results are available at any time.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: linkedin-support-db
+          property: connectionString
       # Stable recruiter-console token, generated once and stored by Render.
       - key: ADMIN_TOKEN
         generateValue: true
