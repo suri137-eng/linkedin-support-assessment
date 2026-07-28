@@ -36,7 +36,7 @@ def _startup() -> None:
 # --------------------------- request models ---------------------------
 class StartSession(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    email: str = Field(default="", max_length=200)
+    linkedin_url: str = Field(default="", max_length=200)
     category_id: str = Field(min_length=1, max_length=40)
 
 
@@ -50,6 +50,19 @@ class SubmitBody(BaseModel):
 
 
 # --------------------------- candidate API ---------------------------
+def _abbreviate_name(full: str) -> str:
+    """Record only first name + last initial for privacy (e.g. "Alex Morgan" -> "Alex M").
+
+    Idempotent: "Alex M" -> "Alex M". Mirrors abbreviateName() in static/app.js.
+    """
+    parts = (full or "").split()
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    return f"{parts[0]} {parts[-1][0].upper()}"
+
+
 @app.get("/api/config")
 def api_config() -> dict:
     return {
@@ -74,8 +87,8 @@ def start_session(body: StartSession) -> dict:
         raise HTTPException(status_code=400, detail="No scenario available for that category.")
 
     sid = storage.create_session(
-        candidate_name=body.name.strip(),
-        candidate_email=body.email.strip(),
+        candidate_name=_abbreviate_name(body.name),
+        linkedin_url=body.linkedin_url.strip(),
         category_id=category["id"],
         category_title=category["title"],
         sub_id=sub["id"],

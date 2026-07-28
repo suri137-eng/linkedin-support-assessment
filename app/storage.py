@@ -33,7 +33,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS sessions (
                 id TEXT PRIMARY KEY,
                 candidate_name TEXT,
-                candidate_email TEXT,
+                candidate_linkedin TEXT,
                 category_id TEXT,
                 category_title TEXT,
                 sub_id TEXT,
@@ -54,11 +54,15 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
             """
         )
+        # Migrate legacy DBs: candidate_email -> candidate_linkedin.
+        cols = {r["name"] for r in c.execute("PRAGMA table_info(sessions)").fetchall()}
+        if "candidate_email" in cols and "candidate_linkedin" not in cols:
+            c.execute("ALTER TABLE sessions RENAME COLUMN candidate_email TO candidate_linkedin")
 
 
 def create_session(
     candidate_name: str,
-    candidate_email: str,
+    linkedin_url: str,
     category_id: str,
     category_title: str,
     sub_id: str,
@@ -67,9 +71,9 @@ def create_session(
     with _conn() as c:
         c.execute(
             """INSERT INTO sessions
-               (id, candidate_name, candidate_email, category_id, category_title, sub_id, status, created_at)
+               (id, candidate_name, candidate_linkedin, category_id, category_title, sub_id, status, created_at)
                VALUES (?,?,?,?,?,?, 'active', ?)""",
-            (sid, candidate_name, candidate_email, category_id, category_title, sub_id, _now()),
+            (sid, candidate_name, linkedin_url, category_id, category_title, sub_id, _now()),
         )
     return sid
 
@@ -119,7 +123,7 @@ def mark_submitted(session_id: str, score: dict[str, Any]) -> None:
 def list_results() -> list[dict[str, Any]]:
     with _conn() as c:
         rows = c.execute(
-            """SELECT id, candidate_name, candidate_email, category_title, sub_id,
+            """SELECT id, candidate_name, candidate_linkedin, category_title, sub_id,
                       status, created_at, submitted_at, overall, band
                FROM sessions ORDER BY created_at DESC"""
         ).fetchall()

@@ -59,7 +59,7 @@ p.lead { color: var(--muted); margin: 0 0 20px; }
 
 /* Intro form */
 label { display: block; font-weight: 600; font-size: 13px; margin: 14px 0 6px; }
-input[type=text], input[type=email] {
+input[type=text], input[type=email], input[type=url] {
   width: 100%; padding: 11px 13px; font-size: 15px;
   border: 1px solid #b9c4cf; border-radius: 8px; outline: none;
 }

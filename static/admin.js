@@ -52,7 +52,7 @@ function renderList(results) {
         <span>${escapeHtml(r.category_title || "")}</span>
         <span>${r.status === "submitted" ? "Score " + score + "/100" : "…"}</span>
       </div>
-      <div class="r-meta"><span>${escapeHtml((r.candidate_email || "").slice(0,40))}</span>
+      <div class="r-meta"><span>${linkedinLink(r.candidate_linkedin, {stop:true})}</span>
         <span>${fmtDate(r.created_at)}</span></div>`;
     row.addEventListener("click", () => openDetail(r.id));
     list.appendChild(row);
@@ -81,10 +81,10 @@ function renderDetail(d) {
     html += `<div class="score-num">${score.overall}<span style="font-size:16px;color:var(--muted)">/100</span></div>
       <div><span class="badge ${bandClass(score.band)}">${escapeHtml(score.band)}</span>
       <span class="mode-tag" title="How this was scored">${escapeHtml(score.mode || "")}</span>
-      <div style="font-size:13px;color:var(--muted);margin-top:4px">${escapeHtml(s.candidate_name)} · ${escapeHtml(s.category_title)}</div></div>`;
+      <div style="font-size:13px;color:var(--muted);margin-top:4px">${escapeHtml(s.candidate_name)} · ${escapeHtml(s.category_title)}${s.candidate_linkedin ? " · " + linkedinLink(s.candidate_linkedin) : ""}</div></div>`;
   } else {
     html += `<div><span class="badge b-pending">Not submitted</span>
-      <div style="font-size:13px;color:var(--muted);margin-top:4px">${escapeHtml(s.candidate_name)} · ${escapeHtml(s.category_title)}</div></div>`;
+      <div style="font-size:13px;color:var(--muted);margin-top:4px">${escapeHtml(s.candidate_name)} · ${escapeHtml(s.category_title)}${s.candidate_linkedin ? " · " + linkedinLink(s.candidate_linkedin) : ""}</div></div>`;
   }
   html += `</div>`;
 
@@ -136,6 +136,17 @@ function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   }[c]));
+}
+function linkedinHref(url) {
+  const u = String(url || "").trim();
+  if (!u) return "";
+  return /^https?:\/\//i.test(u) ? u : "https://" + u;
+}
+function linkedinLink(url, opts) {
+  const href = linkedinHref(url);
+  if (!href) return "";
+  const stop = opts && opts.stop ? ' onclick="event.stopPropagation()"' : "";
+  return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer"${stop}>LinkedIn ↗</a>`;
 }
 
 $("load").addEventListener("click", loadResults);

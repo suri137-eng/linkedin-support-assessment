@@ -38,9 +38,10 @@
 
         <label for="name">Your name</label>
         <input id="name" type="text" placeholder="e.g. Alex Morgan" autocomplete="name" maxlength="120" />
+        <div style="font-size:12px;color:var(--muted);margin:-6px 0 6px">For privacy, only your first name and last initial are recorded (e.g. “Alex M”).</div>
 
-        <label for="email">Email <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-        <input id="email" type="email" placeholder="you@example.com" autocomplete="email" maxlength="200" />
+        <label for="linkedin">LinkedIn Profile URL <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <input id="linkedin" type="url" inputmode="url" placeholder="https://www.linkedin.com/in/your-profile" autocomplete="url" maxlength="200" />
 
         <label class="consent">
           <input id="consent" type="checkbox" />

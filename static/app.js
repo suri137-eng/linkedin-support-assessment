@@ -64,8 +64,8 @@ async function startSession(categoryId) {
   $("scenario-error").textContent = "";
   try {
     const data = await api("/api/session", {
-      name: $("name").value.trim(),
-      email: $("email").value.trim(),
+      name: abbreviateName($("name").value.trim()),
+      linkedin_url: $("linkedin").value.trim(),
       category_id: categoryId,
     });
     state.sessionId = data.session_id;
@@ -182,6 +182,14 @@ async function finish() {
 }
 
 // ---------- utils ----------
+function abbreviateName(full) {
+  const parts = String(full || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  const first = parts[0];
+  const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
+  return `${first} ${lastInitial}`;
+}
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
