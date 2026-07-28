@@ -90,13 +90,214 @@ def _is_unsafe_request(text: str) -> bool:
     return _contains_any(low, _UNSAFE_ELICIT_CUES) > 0
 
 
+# Agent asked the customer to say something again -> mild annoyance at repeating.
+_REPEAT_CUES = [
+    "repeat that", "say that again", "come again", "didn't catch", "did not catch",
+    "didn't get that", "what was that", "can you repeat", "could you repeat",
+    "sorry?", "pardon", "one more time",
+]
+# Empty filler that doesn't move things forward -> impatience if overused.
+_FILLER_CUES = [
+    "one moment", "please hold", "hold on", "bear with me", "let me check",
+    "give me a moment", "just a sec", "just a second", "please wait", "moment please",
+    "hang on", "let me look into",
+]
+
+# Mood text -> starting frustration (0 = calm, 10 = furious).
+_MOOD_SCORES = [
+    ("eager", 0), ("curious", 1), ("self-conscious", 1),
+    ("worried", 3), ("anxious", 3), ("confused", 3), ("defensive", 3),
+    ("stressed", 4), ("time-pressured", 4),
+    ("annoyed", 5), ("frustrated", 5),
+    ("upset", 6), ("wronged", 6), ("shaken", 6),
+]
+
+
+def _mood_baseline(mood: str) -> int:
+    low = (mood or "").lower()
+    score = 2
+    for key, val in _MOOD_SCORES:
+        if key in low:
+            score = max(score, val)
+    if "mildly" in low or "slightly" in low or "a little" in low:
+        score -= 1
+    if "civil" in low or "polite" in low:
+        score -= 1
+    if "very" in low or "really" in low:
+        score += 1
+    return max(0, min(7, score))
+
+
+def _pick(options: list[str], used: list[str]) -> str:
+    """Choose a line, preferring one that hasn't been said yet this conversation."""
+    said = " ".join(used).lower()
+    fresh = [o for o in options if o.lower() not in said]
+    if fresh:
+        return random.choice(fresh)
+    # Pool exhausted: at minimum, don't echo the most recent line verbatim.
+    last = used[-1].lower() if used else ""
+    non_repeat = [o for o in options if o.lower() not in last]
+    return random.choice(non_repeat or options)
+
+
+# Generic phrases that, on their own, don't constitute real help.
+_WEAK_SOLUTION = {"let me", "i'll", "i will", "i can", "you can"}
+
+
+def _concrete_help(text: str) -> bool:
+    """True if the message names an actual action, not just 'let me...' filler."""
+    return any((w in text) and (w not in _WEAK_SOLUTION) for w in _SOLUTION_WORDS)
+
+
+def _is_filler_stall(text: str) -> bool:
+    """Filler ('one moment', 'let me check') with no concrete action attached."""
+    return _contains_any(text, _FILLER_CUES) > 0 and not _concrete_help(text)
+
+
+# Short lead-ins placed before a freshly revealed fact (no "as I said" — it's new).
+_ACK_BEFORE_FACT = {
+    "calm": ["Sure —", "Okay —", "Of course —", "Right,"],
+    "impatient": ["Okay, so", "Alright,", "Right, well —", "Yeah,"],
+    "irritated": ["Look,", "Okay, fine —", "Honestly,", "Right —"],
+}
+
+_REPEAT_REPLIES = {
+    "calm": [
+        "Sure, no problem. Like I said, I just need help getting this sorted.",
+        "Of course — I'll go over it again: I really just want this fixed.",
+        "No worries — to recap, I just want to get this resolved.",
+    ],
+    "impatient": [
+        "Okay… I feel like I just explained this. Can we keep moving?",
+        "I did just say all this. Anyway — can we get to a fix, please?",
+        "I've been over this already. Can we not go back to the start?",
+    ],
+    "irritated": [
+        "I've already gone over this twice. I really don't want to keep repeating myself.",
+        "Seriously? I just explained all of this. Please, can you just help me fix it?",
+        "I'm not going to keep saying the same thing. Are you actually listening to me?",
+    ],
+}
+
+_UNSAFE_REPLIES = {
+    "calm": [
+        "I'd rather not share that — I'm not comfortable giving my password or full card number over chat. Is there another way to verify me?",
+        "Hmm, I don't think I should hand that over. Can we confirm my identity some other way?",
+        "I'd prefer not to give my password out. Is there a safer way to check it's me?",
+    ],
+    "impatient": [
+        "No, I'm not giving out my password or full card number. Isn't there a safer way to check who I am?",
+        "I'd really prefer not to share that. There must be another way to verify me, surely?",
+        "I'm not comfortable with that. Can't you verify me without my password?",
+    ],
+    "irritated": [
+        "Absolutely not — I'm not handing over my password or full card number over chat. That doesn't feel right at all.",
+        "No way. You really shouldn't be asking me for that. Please find another way to verify me.",
+        "I'm not giving you my password, full stop. Support should never ask for that.",
+    ],
+}
+
+_ALREADY_TOLD = {
+    "calm": [
+        "I think I've shared everything I know at this point — so what happens next?",
+        "That's honestly all the detail I have. Where does that leave us?",
+        "I've given you all I've got — what's the next step from here?",
+    ],
+    "impatient": [
+        "I've told you everything already. Can we actually get to a solution now?",
+        "I don't have anything more to add — can we move on to fixing it?",
+        "There's nothing else to tell. Can we please get to the fix?",
+    ],
+    "irritated": [
+        "I've answered all of this already. We're going in circles — can you please just resolve it?",
+        "We keep covering the same ground. I've told you everything I can. Please just help me.",
+        "I've said everything there is to say. I need this sorted, not more questions.",
+    ],
+}
+
+_FOLLOWUPS = {
+    "calm": [
+        "Okay, that helps. Is there anything I need to do on my end?",
+        "Got it. Will this happen automatically, or do I need to do something?",
+        "Alright, thanks. Can you confirm what happens next?",
+    ],
+    "impatient": [
+        "Okay… and is that actually going to fix it, or is there more to it?",
+        "Right, but what do I need to do now — anything on my side?",
+        "So is that it, or are there more steps? I'd like to wrap this up.",
+    ],
+    "irritated": [
+        "Okay, but is that really going to solve it this time? I just want it done.",
+        "And that'll actually fix it? I've heard 'try this' before and it didn't help.",
+        "Fine — but I need to know this is actually resolved, not just another step.",
+    ],
+}
+
+_EMPATHY_NUDGE = {
+    "calm": [
+        "Thanks, I appreciate that. So what can we do to fix it?",
+        "That's kind of you, thank you. What are the next steps?",
+        "I appreciate you saying that. How do we sort it out?",
+    ],
+    "impatient": [
+        "I appreciate that, but I really just need this fixed. What's the plan?",
+        "Thanks — though what I really need is a solution. Where do we start?",
+        "That's nice to hear, but can we focus on actually fixing it?",
+    ],
+    "irritated": [
+        "I appreciate the sympathy, but I need action, not just apologies. What are you going to do about it?",
+        "Look, the kind words are fine, but can we actually fix this? What's the next step?",
+        "Please stop apologizing and just help me — what are you actually going to do?",
+    ],
+}
+
+_STALL_NUDGE = {
+    "calm": [
+        "I'm not quite sure what to do here — can you walk me through the next step?",
+        "Okay… so how do we actually sort this out?",
+        "I'm a bit lost, to be honest. What should I do now?",
+    ],
+    "impatient": [
+        "We don't seem to be getting anywhere — can you give me an actual next step?",
+        "Okay, but what do we DO about it? I need something concrete.",
+        "Can we move this along? I still don't know what happens now.",
+    ],
+    "irritated": [
+        "Honestly, we're just going round in circles. Can you please give me a real answer?",
+        "This is getting frustrating — I still don't have a solution. What are you actually doing to help me?",
+        "I've been at this a while now and nothing's happening. Can you please just help me?",
+    ],
+}
+
+_CLOSERS = {
+    "calm": [
+        "That makes sense — thank you so much, that really helps. I think I'm all set now.",
+        "Perfect, that's exactly what I needed. I really appreciate your help!",
+        "Great, I understand now. Thanks for sorting this out for me.",
+    ],
+    "relieved": [
+        "Oh — okay, that actually works. Thank you, I appreciate you sticking with it.",
+        "Finally, that makes sense. Sorry if I was a bit short earlier — thanks for getting it sorted.",
+        "Right, that's what I needed. Thanks for pushing through and fixing it.",
+    ],
+}
+
+
 def demo_customer_reply(sub: dict[str, Any], history: list[dict[str, str]]) -> tuple[str, bool]:
-    """Return (customer_reply_text, resolved) adapting to the latest candidate message."""
+    """Return (customer_reply_text, resolved) adapting to the latest candidate message.
+
+    The customer has a mood-driven baseline and a running frustration level that
+    rises when the agent stalls, loops, asks them to repeat, or requests unsafe
+    info, and eases with genuine empathy and concrete help. Phrasing varies by
+    tone (calm / impatient / irritated) and avoids repeating lines already used.
+    """
     cand = _candidate_msgs(history)
     if not cand:
         return sub["opening_message"], False
+
+    used = _customer_msgs(history)
+    prior_customer = " ".join(used).lower()
     last = cand[-1].lower()
-    prior_customer = " ".join(_customer_msgs(history)).lower()
 
     facts = sub["hidden_facts"]
     revealed = sum(1 for f in facts if _extract_quote(f).lower()[:25] in prior_customer)
@@ -104,57 +305,70 @@ def demo_customer_reply(sub: dict[str, Any], history: list[dict[str, str]]) -> t
     is_question = ("?" in last) or _contains_any(last, _QUESTION_HINTS) > 0
     empathetic = _contains_any(last, _EMPATHY_WORDS) > 0
     unsafe = _is_unsafe_request(last)
-    solutionish = _contains_any(last, _SOLUTION_WORDS) > 0
+    asked_repeat = _contains_any(last, _REPEAT_CUES) > 0
+    filler_stall = _is_filler_stall(last)
+    solutionish = _contains_any(last, _SOLUTION_WORDS) > 0 and not filler_stall
+    # Count only genuine help: ignore pure filler and unsafe asks that happen to
+    # contain a keyword like "verify".
+    help_total = sum(
+        _contains_any(c.lower(), _SOLUTION_WORDS)
+        for c in cand
+        if not _is_filler_stall(c.lower()) and not _is_unsafe_request(c.lower())
+    )
 
-    # Cumulative "help" signal across the whole conversation.
-    help_total = sum(_contains_any(c.lower(), _SOLUTION_WORDS) for c in cand)
+    # Count turns that went nowhere (no question, no solution, or pure filler).
+    stalls = 0
+    for c in cand:
+        lo = c.lower()
+        went_somewhere = ("?" in lo) or _contains_any(lo, _QUESTION_HINTS) > 0 or _contains_any(lo, _SOLUTION_WORDS) > 0
+        if (not went_somewhere) or _is_filler_stall(lo):
+            stalls += 1
 
-    warm = "Thanks, I appreciate that. " if empathetic else ""
+    frustration = _mood_baseline(sub.get("mood", ""))
+    frustration += 2 * max(0, stalls - 1)
+    frustration += 3 if unsafe else 0
+    frustration += 2 if asked_repeat else 0
+    frustration -= 2 if empathetic else 0
+    frustration -= 3 if help_total >= 1 else 0
+    frustration = max(0, min(10, frustration))
+    tone = "calm" if frustration <= 3 else ("impatient" if frustration <= 6 else "irritated")
+
+    # 0) Agent asked the customer to repeat themselves -> they dislike re-explaining.
+    if asked_repeat:
+        return _pick(_REPEAT_REPLIES[tone], used), False
 
     # 1) Unsafe request -> reluctance/refusal (tests compliance).
     if unsafe:
-        return (
-            f"{warm}I'd rather not share that — I don't feel comfortable giving my password or full "
-            f"card number over chat. Is there another way to verify me?",
-            False,
-        )
+        return _pick(_UNSAFE_REPLIES[tone], used), False
 
     # 2) A question that can surface a not-yet-revealed hidden fact.
     if is_question and revealed < len(facts):
         reveal = _extract_quote(facts[revealed])
-        return f"{warm}{reveal}", False
+        opener = _pick(_ACK_BEFORE_FACT[tone], used)
+        return f"{opener} {reveal}", False
+
+    # 2b) Still probing, but everything has already been shared -> going in circles.
+    if is_question and revealed >= len(facts):
+        return _pick(_ALREADY_TOLD[tone], used), False
+
+    # 2c) Pure filler ("one moment", "let me check") with no concrete action.
+    if filler_stall:
+        return _pick(_STALL_NUDGE[tone], used), False
 
     # 3) The candidate proposed a solution / actionable guidance.
     if solutionish:
         enough_facts = revealed >= min(2, len(facts))
         if help_total >= 2 and enough_facts:
-            closer = random.choice([
-                "That makes sense — thank you so much, that really helps. I think I'm all set now.",
-                "Perfect, that's exactly what I needed. I really appreciate your help!",
-                "Great, I understand now. Thanks for sorting this out for me.",
-            ])
+            closer = _pick(_CLOSERS["relieved" if frustration >= 5 else "calm"], used)
             return f"{closer} [RESOLVED]", True
-        follow = random.choice([
-            "Okay, that helps. Just to be sure — is there anything else I need to do?",
-            "Got it. And will this happen automatically or do I need to do something?",
-            "Alright, thank you. Can you confirm what happens next?",
-        ])
-        return f"{warm}{follow}", False
+        return _pick(_FOLLOWUPS[tone], used), False
 
-    # 4) Empathy/acknowledgement with no concrete info yet -> nudge for help.
+    # 4) Empathy/acknowledgement with no concrete info yet -> nudge for action.
     if empathetic:
-        return (
-            "Thank you, I appreciate you understanding. So what can we do to fix this?",
-            False,
-        )
+        return _pick(_EMPATHY_NUDGE[tone], used), False
 
-    # 5) Fallback: restate the need and ask for direction.
-    nudge = random.choice([
-        "I'm still not sure what to do here — can you help me with the next step?",
-        "Okay… so how do we actually resolve this?",
-        "I'm a bit lost. What should I do now?",
-    ])
-    return nudge, False
+    # 5) Fallback: nothing useful landed -> nudge, increasingly impatiently.
+    return _pick(_STALL_NUDGE[tone], used), False
 
 
 def _clamp(v: float) -> int:
