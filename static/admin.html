@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Recruiter — Assessment Results</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <style>
+    main { max-width: 1100px; }
+    .token-bar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .token-bar .grow { flex: 1; min-width: 240px; }
+    .layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; margin-top: 18px; }
+    @media (max-width: 820px){ .layout { grid-template-columns: 1fr; } }
+    .list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+    .row { padding: 12px 14px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .1s; }
+    .row:hover { background: #f5f8fb; }
+    .row.active { background: #eaf2fb; }
+    .row .r-name { font-weight: 600; }
+    .row .r-meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; margin-top: 3px; }
+    .badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; color:#fff; }
+    .b-strong { background:#057642;} .b-hire{ background:#0a66c2;} .b-lean{ background:#8a6d00;}
+    .b-leanno{ background:#b24020;} .b-no{ background:#7a1c1c;} .b-pending{ background:#889; }
+    .detail { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; min-height: 300px; }
+    .score-hero { display:flex; align-items:center; gap:18px; margin-bottom:14px; flex-wrap: wrap; }
+    .score-num { font-size: 40px; font-weight: 800; color: var(--primary); }
+    .dim { margin: 10px 0; }
+    .dim .top { display:flex; justify-content: space-between; font-size: 13px; }
+    .bar { height: 8px; background:#e8edf2; border-radius: 6px; overflow: hidden; margin-top: 4px; }
+    .bar > i { display:block; height:100%; background: linear-gradient(90deg,#0a66c2,#3f9bef); }
+    .dim .ev { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 12px; }
+    .chip { font-size:12px; padding:4px 10px; border-radius: 14px; }
+    .chip.good { background:#eafaf1; color:#057642; }
+    .chip.bad { background:#fdeee9; color:#b24020; }
+    .chip.warn { background:#fff6e0; color:#8a6d00; }
+    .transcript { border-top:1px solid var(--line); margin-top:14px; padding-top:12px; }
+    .t-msg { margin:8px 0; }
+    .t-msg .lbl { font-size:11px; font-weight:700; color: var(--muted); }
+    .t-msg.customer .lbl { color:#0a66c2; }
+    .t-msg .body { font-size:14px; white-space: pre-wrap; }
+    .section-h { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 16px 0 6px; }
+    .mode-tag { font-size:11px; color:var(--muted); border:1px solid var(--line); padding:2px 8px; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo">in</div>
+    <div>
+      <h1>Recruiter Console — Assessment Results</h1>
+      <div class="sub">Scores &amp; transcripts (confidential)</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="token-bar">
+        <div class="grow">
+          <label for="token">Admin token</label>
+          <input id="token" type="text" placeholder="Paste ADMIN_TOKEN (shown in server console)" />
+        </div>
+        <button id="load" class="btn">Load results</button>
+        <button id="refresh" class="btn secondary">Refresh</button>
+      </div>
+      <div id="admin-error" class="error-toast"></div>
+    </div>
+
+    <div class="layout">
+      <div class="list" id="list"><div class="row"><em style="color:var(--muted)">Enter your token and click “Load results”.</em></div></div>
+      <div class="detail" id="detail"><p class="lead">Select a candidate to see their scored transcript.</p></div>
+    </div>
+  </main>
+
+  <script src="/static/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+# Render Blueprint — deploys the LinkedIn Global Support Consultant chat
+# assessment as a free-tier web service.
+#
+# Deploy:
+#   1. Push this repo to GitHub (or GitLab/Bitbucket).
+#   2. In the Render dashboard: New +  ->  Blueprint  ->  pick this repo.
+#      Render reads this file and creates the service automatically.
+#   3. (Optional) In the service's Environment tab, set OPENAI_API_KEY to
+#      enable the live AI role-play. Without it the app runs in DEMO mode.
+#
+# Notes for the free tier:
+#   * The service sleeps after ~15 min of inactivity and cold-starts on the
+#     next request (first hit may take ~30–60s).
+#   * The filesystem is EPHEMERAL — the SQLite results DB is wiped on every
+#     restart/redeploy. ADMIN_TOKEN is pinned below so the recruiter link
+#     stays stable regardless. For durable results, add a paid disk or an
+#     external database.
+services:
+  - type: web
+    name: linkedin-support-assessment
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Stable recruiter-console token, generated once and stored by Render.
+      - key: ADMIN_TOKEN
+        generateValue: true
+      # Secret — set this in the Render dashboard to enable live AI role-play.
+      # Left unset the app runs in the built-in offline DEMO simulator.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini

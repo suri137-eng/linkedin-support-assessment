@@ -1,0 +1,22 @@
+# Keep the ACR build context small and clean.
+.venv/
+.venv-streamlit/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+.azure/
+data/
+*.log
+cloudflared.log
+.env
+.env.*
+!.env.example
+README.md
+scripts/
+infra/
+*.md
+.vscode/
+.idea/

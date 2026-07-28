@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Support Consultant — Live Chat Assessment</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo">in</div>
+    <div>
+      <h1>Global Support Consultant — Live Chat Assessment</h1>
+      <div class="sub">Role-play a real customer support conversation</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Screen 1: Intro -->
+    <section id="screen-intro" class="screen active">
+      <div class="card">
+        <h2 class="title">Welcome 👋</h2>
+        <p class="lead">
+          In this assessment you'll act as a <strong>LinkedIn Global Support Consultant</strong>.
+          You'll chat live with a customer who has an issue, and your job is to help them the way a
+          great support professional would.
+        </p>
+        <div class="expect">
+          <strong>What to expect</strong>
+          <ul>
+            <li>You'll choose a support scenario, then chat with the customer in real time.</li>
+            <li>The customer reacts to what you say — there's no single "right" script.</li>
+            <li>Be helpful, clear, and professional. Aim for a natural, complete conversation.</li>
+            <li>It usually takes about 5–15 minutes. Click <em>Finish &amp; Submit</em> when you're done.</li>
+          </ul>
+        </div>
+
+        <label for="name">Your name</label>
+        <input id="name" type="text" placeholder="e.g. Alex Morgan" autocomplete="name" maxlength="120" />
+
+        <label for="email">Email <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <input id="email" type="email" placeholder="you@example.com" autocomplete="email" maxlength="200" />
+
+        <label class="consent">
+          <input id="consent" type="checkbox" />
+          <span>I understand this is a role-play support assessment and consent to my chat responses
+          being recorded and reviewed for evaluation purposes.</span>
+        </label>
+
+        <div class="btn-row">
+          <button id="to-scenarios" class="btn" disabled>Continue</button>
+        </div>
+        <div id="intro-error" class="error-toast"></div>
+      </div>
+    </section>
+
+    <!-- Screen 2: Choose scenario -->
+    <section id="screen-scenarios" class="screen">
+      <div class="card">
+        <h2 class="title">Choose a Support Scenario</h2>
+        <p class="lead">Pick the type of customer issue you'd like to handle. A specific case will be assigned at random.</p>
+        <div id="scenario-grid" class="grid"></div>
+        <div class="btn-row">
+          <button id="back-intro" class="btn secondary">Back</button>
+        </div>
+        <div id="scenario-error" class="error-toast"></div>
+      </div>
+    </section>
+
+    <!-- Screen 3: Chat -->
+    <section id="screen-chat" class="screen">
+      <div class="chat-wrap">
+        <div class="chat-head">
+          <div class="avatar" id="cust-avatar">C</div>
+          <div>
+            <div class="who" id="cust-name">Customer</div>
+            <div class="ctx" id="chat-ctx">Support chat</div>
+          </div>
+          <div class="spacer"></div>
+          <div class="pill" id="turn-pill">0 messages</div>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="composer">
+          <textarea id="input" rows="1" placeholder="Type your reply as the support consultant…" maxlength="4000"></textarea>
+          <button id="send" class="btn">Send</button>
+        </div>
+      </div>
+      <div class="chat-actions">
+        <span class="hint" id="chat-hint"></span>
+        <button id="finish" class="btn secondary" disabled>Finish &amp; Submit</button>
+      </div>
+      <div id="resolved-banner" class="resolved-banner" style="display:none">
+        The customer feels their issue is resolved. You can keep chatting or click <strong>Finish &amp; Submit</strong>.
+      </div>
+      <div id="chat-error" class="error-toast"></div>
+    </section>
+
+    <!-- Screen 4: Done -->
+    <section id="screen-done" class="screen">
+      <div class="card done">
+        <div class="check">✓</div>
+        <h2 class="title">Thank you!</h2>
+        <p class="lead" id="done-msg">Your responses have been recorded. Our team will review them.</p>
+        <p class="hint">You can now close this window.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
