@@ -20,7 +20,7 @@ services:
     name: linkedin-support-assessment
     runtime: python
     plan: free
-    region: oregon
+    region: singapore
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
