@@ -86,6 +86,7 @@ with recruiters).
 
 The repo includes a Render **Blueprint** (`render.yaml`) that provisions a free web
 service (Python runtime, `uvicorn` bound to Render's `$PORT`, a generated `ADMIN_TOKEN`,
+health check) **and a free managed PostgreSQL database** for durable result storage.
 and `OPENAI_API_KEY` as a dashboard-set secret).
 
 1. Push this repo to GitHub (or GitLab/Bitbucket).
@@ -99,9 +100,12 @@ and `OPENAI_API_KEY` as a dashboard-set secret).
    recruiter at `/admin`).
 
 > **Free-tier caveats:** the service sleeps after ~15 min idle and cold-starts on the next
-> request (first hit ~30–60s), and the filesystem is **ephemeral** — the SQLite results DB
-> is wiped on restart/redeploy. `ADMIN_TOKEN` is pinned by the blueprint so the recruiter
-> link stays stable. For durable results, add a paid disk or an external database.
+> request (first hit ~30–60s). The web-service filesystem is **ephemeral**, so results are
+> stored in the managed **PostgreSQL** database (via `DATABASE_URL`) instead — they survive
+> restarts, redeploys, and sleeps. `ADMIN_TOKEN` is pinned by the blueprint so the recruiter
+> link stays stable. Note: Render's *free* Postgres is removed ~30 days after creation; for
+> indefinite durability, upgrade the DB plan or point `DATABASE_URL` at an external Postgres
+> (e.g. Neon) — no code change needed. Locally (no `DATABASE_URL`) it uses a SQLite file.
 
 #### Any container host (Docker)
 The included **Dockerfile** deploys anywhere that runs containers:
@@ -165,7 +169,7 @@ app/
   llm.py         OpenAI/Azure-compatible client
   demo.py        offline adaptive customer + heuristic scorer
   engine.py      dispatch (LLM ↔ demo) for replies & scoring
-  storage.py     SQLite persistence
+  storage.py     SQLite/PostgreSQL persistence (durable when DATABASE_URL is set)
   main.py        FastAPI app (candidate + admin APIs, static serving)
 static/
   index.html / styles.css / app.js   candidate SPA
