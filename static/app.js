@@ -9,6 +9,12 @@ const state = {
   candidateTurns: 0,
   awaiting: false,
   finished: false,
+  // timers
+  overallEndsAt: null,
+  overallTimer: null,
+  turnStartedAt: null,
+  turnTimer: null,
+  timeUp: false,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -79,23 +85,30 @@ async function startSession(categoryId) {
     $("chat-ctx").textContent = `${data.category.emoji} ${data.category.title}`;
     $("messages").innerHTML = "";
     $("resolved-banner").style.display = "none";
+    $("timesup-banner").style.display = "none";
     $("finish").disabled = true;
+    resetTimerDisplays();
     updateTurnPill();
     updateHint();
 
     addMessage("customer", data.opening_message, state.customerName);
     showScreen("chat");
+    startTimers();
     $("input").focus();
   } catch (e) {
     $("scenario-error").textContent = e.message;
   }
 }
 
-function addMessage(role, text, name) {
+function addMessage(role, text, name, elapsedSec) {
   const wrap = document.createElement("div");
   wrap.className = `msg ${role}`;
   const label = role === "customer" ? (name || state.customerName) : "You";
-  wrap.innerHTML = `<span class="name">${escapeHtml(label)}</span>${escapeHtml(text)}`;
+  let meta = "";
+  if (role === "candidate" && typeof elapsedSec === "number") {
+    meta = `<span class="meta">⏱ ${fmtClock(elapsedSec)} to reply</span>`;
+  }
+  wrap.innerHTML = `<span class="name">${escapeHtml(label)}</span>${escapeHtml(text)}${meta}`;
   $("messages").appendChild(wrap);
   scrollMessages();
 }
@@ -111,21 +124,23 @@ function hideTyping() { const t = $("typing"); if (t) t.remove(); }
 function scrollMessages() { const m = $("messages"); m.scrollTop = m.scrollHeight; }
 
 async function sendMessage() {
-  if (state.awaiting || state.finished) return;
+  if (state.awaiting || state.finished || state.timeUp) return;
   const input = $("input");
   const text = input.value.trim();
   if (!text) return;
   $("chat-error").textContent = "";
 
+  const elapsedSec = stopTurnTimer(); // time spent composing this reply
   state.awaiting = true;
   $("send").disabled = true;
-  addMessage("candidate", text);
+  addMessage("candidate", text, null, elapsedSec);
   input.value = "";
   autoGrow(input);
   showTyping();
 
   try {
     const data = await api("/api/chat", { session_id: state.sessionId, message: text });
+    if (state.finished || state.timeUp) { hideTyping(); return; }
     hideTyping();
     addMessage("customer", data.reply, state.customerName);
     state.candidateTurns = data.candidate_turns;
@@ -136,11 +151,14 @@ async function sendMessage() {
       $("send").disabled = true;
       input.disabled = true;
       $("chat-hint").textContent = "Message limit reached — please finish and submit.";
+    } else {
+      startTurnTimer(); // begin timing the next reply
     }
     updateHint();
   } catch (e) {
     hideTyping();
     $("chat-error").textContent = e.message;
+    if (!state.timeUp && !state.finished) startTurnTimer();
   } finally {
     state.awaiting = false;
     if (!$("input").disabled) $("send").disabled = false;
@@ -161,11 +179,14 @@ function updateHint() {
   }
 }
 
-async function finish() {
+async function finish(force = false) {
   if (state.finished) return;
-  const ok = window.confirm("Submit this assessment? You won't be able to continue the conversation afterwards.");
-  if (!ok) return;
+  if (!force) {
+    const ok = window.confirm("Submit this assessment? You won't be able to continue the conversation afterwards.");
+    if (!ok) return;
+  }
   state.finished = true;
+  clearTimers();
   $("finish").disabled = true;
   $("send").disabled = true;
   $("input").disabled = true;
@@ -175,10 +196,87 @@ async function finish() {
     showScreen("done");
   } catch (e) {
     $("chat-error").textContent = e.message;
-    state.finished = false;
-    $("send").disabled = false;
-    $("input").disabled = false;
+    if (!force) {
+      state.finished = false;
+      $("send").disabled = false;
+      $("input").disabled = false;
+    }
   }
+}
+
+// ---------- Timers ----------
+const TOTAL_SECONDS = 300; // 5 minutes to complete the chat
+
+function fmtClock(totalSec) {
+  const s = Math.max(0, Math.round(totalSec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function resetTimerDisplays() {
+  state.timeUp = false;
+  $("overall-time").textContent = fmtClock(TOTAL_SECONDS);
+  $("resp-time").textContent = fmtClock(0);
+  $("overall-clock").className = "countdown ok";
+}
+
+function startTimers() {
+  clearTimers();
+  state.timeUp = false;
+  state.overallEndsAt = Date.now() + TOTAL_SECONDS * 1000;
+  tickOverall();
+  state.overallTimer = setInterval(tickOverall, 250);
+  startTurnTimer();
+}
+
+function tickOverall() {
+  const remaining = (state.overallEndsAt - Date.now()) / 1000;
+  $("overall-time").textContent = fmtClock(remaining);
+  const el = $("overall-clock");
+  el.classList.remove("ok", "warn", "danger");
+  if (remaining <= 15) el.classList.add("danger");
+  else if (remaining <= 60) el.classList.add("warn");
+  else el.classList.add("ok");
+  if (remaining <= 0) handleTimeUp();
+}
+
+function startTurnTimer() {
+  clearInterval(state.turnTimer);
+  state.turnStartedAt = Date.now();
+  tickTurn();
+  state.turnTimer = setInterval(tickTurn, 250);
+}
+function tickTurn() {
+  if (!state.turnStartedAt) return;
+  $("resp-time").textContent = fmtClock((Date.now() - state.turnStartedAt) / 1000);
+}
+function stopTurnTimer() {
+  clearInterval(state.turnTimer);
+  state.turnTimer = null;
+  const elapsed = state.turnStartedAt ? (Date.now() - state.turnStartedAt) / 1000 : 0;
+  state.turnStartedAt = null;
+  $("resp-time").textContent = fmtClock(0);
+  return elapsed;
+}
+function clearTimers() {
+  clearInterval(state.overallTimer);
+  clearInterval(state.turnTimer);
+  state.overallTimer = null;
+  state.turnTimer = null;
+  state.turnStartedAt = null;
+}
+
+async function handleTimeUp() {
+  if (state.timeUp || state.finished) return;
+  state.timeUp = true;
+  clearTimers();
+  $("overall-time").textContent = "0:00";
+  $("overall-clock").className = "countdown danger";
+  $("resp-time").textContent = fmtClock(0);
+  $("input").disabled = true;
+  $("send").disabled = true;
+  $("chat-hint").textContent = "Time's up.";
+  $("timesup-banner").style.display = "block";
+  await finish(true);
 }
 
 // ---------- utils ----------
@@ -204,7 +302,7 @@ function wireChat() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   });
   $("send").addEventListener("click", sendMessage);
-  $("finish").addEventListener("click", finish);
+  $("finish").addEventListener("click", () => finish());
 }
 
 // ---------- boot ----------

@@ -32,7 +32,8 @@
             <li>You'll choose a support scenario, then chat with the customer in real time.</li>
             <li>The customer reacts to what you say — there's no single "right" script.</li>
             <li>Be helpful, clear, and professional. Aim for a natural, complete conversation.</li>
-            <li>It usually takes about 5–15 minutes. Click <em>Finish &amp; Submit</em> when you're done.</li>
+            <li>You have <strong>5 minutes</strong> to complete the chat — a countdown timer is shown, and the time you spend on each reply is recorded.</li>
+            <li>Click <em>Finish &amp; Submit</em> when you're done. If the timer reaches zero, your assessment is submitted automatically.</li>
           </ul>
         </div>
 
@@ -79,7 +80,15 @@
             <div class="ctx" id="chat-ctx">Support chat</div>
           </div>
           <div class="spacer"></div>
+          <div class="resp-clock" id="resp-clock" title="Time spent on your current reply">
+            <span class="rc-label">this reply</span>
+            <span class="rc-time" id="resp-time">0:00</span>
+          </div>
           <div class="pill" id="turn-pill">0 messages</div>
+          <div class="countdown ok" id="overall-clock" title="Total time left to finish the chat">
+            <span class="cd-time" id="overall-time">5:00</span>
+            <span class="cd-label">left</span>
+          </div>
         </div>
         <div class="messages" id="messages"></div>
         <div class="composer">
@@ -93,6 +102,9 @@
       </div>
       <div id="resolved-banner" class="resolved-banner" style="display:none">
         The customer feels their issue is resolved. You can keep chatting or click <strong>Finish &amp; Submit</strong>.
+      </div>
+      <div id="timesup-banner" class="timesup-banner" style="display:none">
+        ⏰ Time's up — submitting your assessment…
       </div>
       <div id="chat-error" class="error-toast"></div>
     </section>
