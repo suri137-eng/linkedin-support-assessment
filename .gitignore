@@ -7,3 +7,7 @@ data/*.db
 data/.admin_token
 .DS_Store
 .azure/
+
+# Reviewer playbook + generator — contain the hidden scoring rubric; never publish
+Assessment-Review-Playbook.pdf
+_playbook_gen.py
